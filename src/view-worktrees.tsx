@@ -4,6 +4,7 @@ import {
   Icon,
   List,
   getPreferenceValues,
+  open,
   openExtensionPreferences,
   showInFinder,
 } from "@raycast/api";
@@ -18,6 +19,8 @@ const execFileAsync = promisify(execFile);
 
 type Preferences = {
   repositories: string;
+  defaultIDE: string;
+  defaultTerminal: string;
 };
 
 type InvalidRepo = {
@@ -174,6 +177,8 @@ async function scanWorktrees(rawRepos: string): Promise<WorktreeScanResult> {
   };
 }
 
+
+
 export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
   const { data, isLoading } = usePromise(scanWorktrees, [preferences.repositories]);
@@ -210,7 +215,18 @@ export default function Command() {
               accessories={[{ text: worktree.detached ? "detached" : (worktree.branch ?? "unknown") }]}
               actions={
                 <ActionPanel>
+                  <Action
+                    title="Open in IDE"
+                    icon={Icon.Code}
+                    onAction={() => open(worktree.path, (preferences.defaultIDE))}
+                  />
                   <Action.CopyToClipboard content={worktree.path} />
+                  <Action
+                    title="Open in Terminal"
+                    icon={Icon.Terminal}
+                    shortcut={{ modifiers: ["cmd"], key: "t" }}
+                    onAction={() => open(worktree.path, (preferences.defaultTerminal))}
+                  />
                   <Action title="Show in Finder" icon={Icon.Folder} onAction={() => showInFinder(worktree.path)} />
                   <Action.CopyToClipboard
                     title="Copy Repository Path"

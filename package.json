@@ -20,6 +20,22 @@
       "type": "textfield",
       "required": true,
       "placeholder": "~/Code/repo-a, ~/Code/repo-b"
+    },
+    {
+      "name": "defaultIDE",
+      "title": "Default IDE",
+      "description": "Application used by the Open in IDE action.",
+      "type": "appPicker",
+      "required": true,
+      "default": "Cursor"
+    },
+    {
+      "name": "defaultTerminal",
+      "title": "Default Terminal",
+      "description": "Application used by the Open in Terminal action.",
+      "type": "appPicker",
+      "required": true,
+      "default": "Terminal"
     }
   ],
   "license": "MIT",
