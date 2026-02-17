@@ -297,12 +297,7 @@ export default function Command() {
                 {
                   tag: {
                     value: formatStatusLabel(worktree),
-                    color:
-                      worktree.status === "synced"
-                        ? Color.Green
-                        : worktree.status === "clean"
-                          ? Color.Blue
-                          : Color.Orange,
+                    color: getStatusColor(worktree),
                   },
                 },
               ]}
@@ -337,17 +332,38 @@ export default function Command() {
   );
 }
 
-function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+function formatStatusLabel(worktree: Worktree): string {
+  const { sync } = worktree;
+  const hasAhead = sync && sync.ahead > 0;
+  const hasBehind = sync && sync.behind > 0;
+
+  if (worktree.status === "dirty") {
+    if (hasAhead || hasBehind) {
+      const parts: string[] = [];
+      if (hasBehind) parts.push(`↓${sync.behind}`);
+      if (hasAhead) parts.push(`↑${sync.ahead}`);
+      return `Dirty (${parts.join(" ")})`;
+    }
+    return "Dirty";
+  }
+
+  if (hasAhead && hasBehind) return `Diverged (↓${sync.behind} ↑${sync.ahead})`;
+  if (hasAhead) return `Ahead (↑${sync.ahead})`;
+  if (hasBehind) return `Behind (↓${sync.behind})`;
+
+  return "Synced";
 }
 
-function formatStatusLabel(worktree: Worktree): string {
-  const label = capitalize(worktree.status);
-  if (worktree.sync && (worktree.sync.ahead > 0 || worktree.sync.behind > 0)) {
-    const parts: string[] = [];
-    if (worktree.sync.behind > 0) parts.push(`↓${worktree.sync.behind}`);
-    if (worktree.sync.ahead > 0) parts.push(`↑${worktree.sync.ahead}`);
-    return `${label} (${parts.join(" ")})`;
-  }
-  return label;
+function getStatusColor(worktree: Worktree): Color {
+  if (worktree.status === "dirty") return Color.Orange;
+
+  const { sync } = worktree;
+  const hasAhead = sync && sync.ahead > 0;
+  const hasBehind = sync && sync.behind > 0;
+
+  if (hasAhead && hasBehind) return Color.Purple;
+  if (hasAhead) return Color.Blue;
+  if (hasBehind) return Color.Yellow;
+
+  return Color.Green;
 }
