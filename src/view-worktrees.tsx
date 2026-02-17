@@ -177,8 +177,6 @@ async function scanWorktrees(rawRepos: string): Promise<WorktreeScanResult> {
   };
 }
 
-
-
 export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
   const { data, isLoading } = usePromise(scanWorktrees, [preferences.repositories]);
@@ -218,14 +216,14 @@ export default function Command() {
                   <Action
                     title="Open in IDE"
                     icon={Icon.Code}
-                    onAction={() => open(worktree.path, (preferences.defaultIDE))}
+                    onAction={() => open(worktree.path, preferences.defaultIDE)}
                   />
                   <Action.CopyToClipboard content={worktree.path} />
                   <Action
                     title="Open in Terminal"
                     icon={Icon.Terminal}
                     shortcut={{ modifiers: ["cmd"], key: "t" }}
-                    onAction={() => open(worktree.path, (preferences.defaultTerminal))}
+                    onAction={() => open(worktree.path, preferences.defaultTerminal)}
                   />
                   <Action title="Show in Finder" icon={Icon.Folder} onAction={() => showInFinder(worktree.path)} />
                   <Action.CopyToClipboard
