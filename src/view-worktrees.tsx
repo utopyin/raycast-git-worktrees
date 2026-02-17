@@ -33,11 +33,17 @@ type InvalidRepo = {
 
 type WorktreeStatus = "synced" | "clean" | "dirty";
 
+type SyncInfo = {
+  ahead: number;
+  behind: number;
+};
+
 type Worktree = {
   path: string;
   branch?: string;
   detached: boolean;
   status: WorktreeStatus;
+  sync?: SyncInfo;
 };
 
 type RepoWorktrees = {
@@ -133,12 +139,11 @@ function parseWorktreeListOutput(stdout: string): Worktree[] {
   return worktrees;
 }
 
-async function getWorktreeStatus(worktreePath: string): Promise<WorktreeStatus> {
+async function getWorktreeStatus(worktreePath: string): Promise<{ status: WorktreeStatus; sync?: SyncInfo }> {
   const { stdout: porcelain } = await execFileAsync("git", ["-C", worktreePath, "status", "--porcelain"]);
-  if (porcelain.trim().length > 0) {
-    return "dirty";
-  }
+  const isDirty = porcelain.trim().length > 0;
 
+  let sync: SyncInfo | undefined;
   try {
     const { stdout: revList } = await execFileAsync("git", [
       "-C",
@@ -149,14 +154,20 @@ async function getWorktreeStatus(worktreePath: string): Promise<WorktreeStatus> 
       "HEAD...@{upstream}",
     ]);
     const [ahead, behind] = revList.trim().split(/\s+/).map(Number);
-    if (ahead === 0 && behind === 0) {
-      return "synced";
-    }
-    return "clean";
+    sync = { ahead, behind };
   } catch {
-    // No upstream configured — can't determine sync status
-    return "clean";
+    // No upstream configured
   }
+
+  if (isDirty) {
+    return { status: "dirty", sync };
+  }
+
+  if (sync && sync.ahead === 0 && sync.behind === 0) {
+    return { status: "synced", sync };
+  }
+
+  return { status: "clean", sync };
 }
 
 async function getRepoWorktrees(repoPath: string): Promise<Worktree[]> {
@@ -164,10 +175,10 @@ async function getRepoWorktrees(repoPath: string): Promise<Worktree[]> {
   const worktrees = parseWorktreeListOutput(stdout);
 
   return Promise.all(
-    worktrees.map(async (wt) => ({
-      ...wt,
-      status: await getWorktreeStatus(wt.path),
-    })),
+    worktrees.map(async (wt) => {
+      const { status, sync } = await getWorktreeStatus(wt.path);
+      return { ...wt, status, sync };
+    }),
   );
 }
 
@@ -285,7 +296,7 @@ export default function Command() {
               accessories={[
                 {
                   tag: {
-                    value: capitalize(worktree.status),
+                    value: formatStatusLabel(worktree),
                     color:
                       worktree.status === "synced"
                         ? Color.Green
@@ -326,4 +337,17 @@ export default function Command() {
   );
 }
 
-const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function formatStatusLabel(worktree: Worktree): string {
+  const label = capitalize(worktree.status);
+  if (worktree.sync && (worktree.sync.ahead > 0 || worktree.sync.behind > 0)) {
+    const parts: string[] = [];
+    if (worktree.sync.behind > 0) parts.push(`↓${worktree.sync.behind}`);
+    if (worktree.sync.ahead > 0) parts.push(`↑${worktree.sync.ahead}`);
+    return `${label} (${parts.join(" ")})`;
+  }
+  return label;
+}
